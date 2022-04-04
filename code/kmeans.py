@@ -1,4 +1,5 @@
 import numpy as np
+from pyparsing import cpp_style_comment
 
 
 class KMeans():
@@ -13,23 +14,43 @@ class KMeans():
         self.n_clusters = n_clusters
         self.init = init
         self.max_iter = max_iter
-        self.centroids = None # Initialized in initialize_centroids()
+        self.centroids = [] # Initialized in initialize_centroids()
+        self.dist = None
+        self.sil = 0
+        self.conv = 0
 
     def fit(self, X: np.ndarray):
         self.initialize_centroids(X)
         iteration = 0
-        clustering = np.zeros(X.shape[0])
         while iteration < self.max_iter:
-            # your code
-            print(iteration,self.max_iter)
-            iteration = iteration +1
-            print('fit1')
+            clustering = []
+            self.dist = self.euclidean_distance(X,self.centroids)
+            for i in range(len(X)):
+                clustering.append(np.argmin(self.dist[i]))
+            old_centroids = self.centroids.copy()
+            self.update_centroids(clustering,X)
+            new_centroids = self.centroids.copy() 
+            optimised = True
+            for o,p in zip(old_centroids,new_centroids):
+                if(not np.array_equal(o,p)):
+                    optimised = False  
+                    break
+            if(optimised):
+                break
+            iteration = iteration + 1
+        self.sil = self.silhouette(clustering,X)
+        self.conv = iteration
         return clustering
 
     def update_centroids(self, clustering: np.ndarray, X: np.ndarray):
-        #your code
-        print('c')
-
+        temp = {}
+        for c in np.unique(clustering):
+            temp[c] = []
+        for d,c in zip(X,clustering):
+            temp[c].append(d)
+        for c in temp: 
+            self.centroids[c] = np.average(temp[c], axis = 0)
+            
     def initialize_centroids(self, X: np.ndarray):
         """
         Initialize centroids either randomly or using kmeans++ method of initialization.
@@ -37,11 +58,24 @@ class KMeans():
         :return:
         """
         if self.init == 'random':
-            print('icr')
-            # your code
+            row_i = np.random.choice(X.shape[0],self.n_clusters,replace= False)
+            self.centroids = X[row_i, :].copy()
         elif self.init == 'kmeans++':
-            # your code
-            print('icp')
+            row_i = np.random.choice(X.shape[0],1,replace= False)
+            self.centroids = X[row_i, :].copy()
+            for k in range(1,self.n_clusters):
+                #Calculate Distance between each data point and each centroid
+                distances = self.euclidean_distance(X,self.centroids)
+                weights = []
+                #Find the closest not chosen centroid for each data point
+                for i in range(len(X)):
+                    weights.append(np.min(distances[i]))
+                sum = np.sum(weights)
+                weights = weights/sum
+                next_centroid_index = np.random.choice(X.shape[0],1,replace= False, p=weights)
+                next_centroid = X[next_centroid_index,:].copy()
+                self.centroids = np.append(self.centroids,next_centroid,axis = 0)   
+
         else:
             raise ValueError('Centroid initialization method should either be "random" or "k-means++"')
 
@@ -53,9 +87,23 @@ class KMeans():
         :param X2:
         :return: Returns a matrix `dist` where `dist_ij` is the distance between row i in X1 and row j in X2.
         """
-        # your code
-        print('ed')
+        dist = np.zeros([X1.shape[0],X2.shape[0]])
+        for i in range(len(X1)):
+            for j in range(len(X2)):
+                dist[i][j] = np.linalg.norm(X1[i] - X2[j])
+        return dist
 
     def silhouette(self, clustering: np.ndarray, X: np.ndarray):
-        # your code
-        print('s')
+        sil = 0
+        for i in range(len(X)):
+            sorted = np.sort(self.dist[i])
+            a = sorted[0]
+            b = sorted [1]
+            s = (b-a)/max(a,b)
+            sil = sil + s
+        return sil/(len(X))
+
+
+
+
+    

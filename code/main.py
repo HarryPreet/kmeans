@@ -3,14 +3,16 @@ import scanpy as sc
 import numpy as np
 from sklearn.decomposition import PCA as pca
 import argparse
-#from kmeans import KMeans
+from kmeans import KMeans
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 def parse_args():
     parser = argparse.ArgumentParser(description='number of clusters to find')
     parser.add_argument('--n-clusters', type=int,
                         help='number of features to use in a tree',
-                        default=2)
+                        default=4)
     parser.add_argument('--data', type=str, default='../data/data.csv',
                         help='data path')
 
@@ -41,17 +43,36 @@ def PCA(X, num_components: int):
 
 def main():
     n_classifiers, data_path = parse_args()
+    print("Reading Data")
     heart = read_data(data_path)
+    print("Preprocessing Data")
     heart = preprocess_data(heart)
-    print(heart.X.shape)
+    print("Doing PCA")
     X = PCA(heart.X, 100)
-    print(X.shape)
+    km = KMeans(n_clusters= n_classifiers, init='random')
+    print("Performing K means clustering")
+    labels = km.fit(X)
+    X = PCA(heart.X, 2)
+    PCA_components = pd.DataFrame(X,columns = ['PC1', 'PC2'])
+    PCA_components['labels'] = labels
+    visualize_cluster(x=0,y=0,clustering=PCA_components)
     
-    # Your code
 
 def visualize_cluster(x, y, clustering):
-    #Your code
-    print('visualising')
+    print('Visualising')
+    label0 = clustering[clustering['labels'] == 0]
+    label1 = clustering[clustering['labels'] == 1]
+    label2 = clustering[clustering['labels'] == 2]
+    label3 = clustering[clustering['labels'] == 3]
+    fig = plt.figure()
+    plt.title('K-means Random Intialisation with k = 5\n',
+                fontsize = 14, fontweight ='bold')
+    plt.scatter(label0['PC1'] , label0['PC2'] , color = 'red')
+    plt.scatter(label1['PC1'] , label1['PC2'] , color = 'green')
+    plt.scatter(label2['PC1'] , label2['PC2'] , color = 'blue')
+    plt.scatter(label3['PC1'] , label3['PC2'] , color = 'yellow')
+    plt.show()
+
 
 if __name__ == '__main__':
     main()
